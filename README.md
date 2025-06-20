@@ -20,8 +20,9 @@ Features 🌟
 * Encryption & Decryption: Encrypts the hidden message and decrypts it when needed. 
 
 * Random Image Selection: A random image is selected as the carrier to embed the hidden data.
-  
-  Usage 💻
+
+ Usage 💻
+ 
 Hiding Information:
 
 To hide a message in an image, run the program and input the text you want to encrypt and embed into the selected image. The message is then securely hidden using LSB encoding. 📝🔒
