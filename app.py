@@ -7,7 +7,7 @@ import io
 st.markdown(
     """
     <div style='text-align: center; padding-bottom: 10px;'>
-        <img src='https://i.imgur.com/aq39RMA.png' width='100'/>
+        <img src='https://stock.adobe.com/in/images/press-enter-button-on-the-keyboard-computer-shield-cyber-key-lock-security-system-abstract-technology-world-digital-link-cyber-security-on-hi-tech-dark-blue-background-lock-finger-keyboard/186885581' height='500',width='500'/>
     </div>
     """,
     unsafe_allow_html=True
