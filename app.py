@@ -1,99 +1,91 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import io
 
-# === Logo ===
-st.markdown(
-    """
-    <div style='text-align: center; padding-bottom: 10px;'>
-        <img src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF_W4m27oeZ-CdXD8gKYN5-86Q7bIzRt-QWqKYv6BsLXXwir-YvhUkyKw&s' height='300' width='500'/>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-# === Title ===
-st.title("🔐 LSB Steganography using XOR")
-st.caption("Hide and retrieve secret messages securely in images.")
-
-# === ASCII Mapping ===
+# ASCII maps
 d = {chr(i): i for i in range(256)}
 c = {i: chr(i) for i in range(256)}
 
-# === LSB Encode ===
-def encode_message(image_array, text, key):
-    x_enc = image_array.copy()
-    n = m = z = kl = 0
-    l = len(text)
+# ---------- ENCODE ----------
+def encode_image(img, text, key):
+    img = np.array(img)
+    h, w, _ = img.shape
 
-    for i in range(l):
-        char_val = d[text[i]] ^ d[key[kl]]
-        for bit_pos in range(8):
-            bit = (char_val >> (7 - bit_pos)) & 1
-            x_enc[n, m, z] = (x_enc[n, m, z] & ~1) | bit
-            z = (z + 1) % 3
-            if z == 0:
-                m += 1
-                if m == x_enc.shape[1]:
-                    n += 1
-                    m = 0
-        kl = (kl + 1) % len(key)
-    return x_enc
+    text_len = len(text)
+    binary_len = format(text_len, '016b')  # store length in 16 bits
 
-# === LSB Decode ===
-def decode_message(image_array, length, key):
-    n = m = z = kl = 0
-    decrypt = ""
+    data = binary_len
+    for i, ch in enumerate(text):
+        val = d[ch] ^ d[key[i % len(key)]]
+        data += format(val, '08b')
 
-    for i in range(length):
-        val = 0
-        for bit_pos in range(8):
-            bit = image_array[n, m, z] & 1
-            val = (val << 1) | bit
-            z = (z + 1) % 3
-            if z == 0:
-                m += 1
-                if m == image_array.shape[1]:
-                    n += 1
-                    m = 0
-        orig_char = c[val ^ d[key[kl]]]
-        decrypt += orig_char
-        kl = (kl + 1) % len(key)
-    return decrypt
+    idx = 0
+    for i in range(h):
+        for j in range(w):
+            for k in range(3):
+                if idx < len(data):
+                    img[i][j][k] = (img[i][j][k] & 0xFE) | int(data[idx])
+                    idx += 1
 
-# === Streamlit UI ===
-uploaded_file = st.file_uploader("📁 Upload a PNG image", type=["png"])
-text = st.text_input("💬 Enter secret message")
-key = st.text_input("🔑 Enter encryption key", type="password")
-mode = st.radio("⚙️ Choose mode", ["Encode", "Decode"])
+    return Image.fromarray(img)
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert("RGB")
-    image_array = np.array(image)
+# ---------- DECODE ----------
+def decode_image(img, key):
+    img = np.array(img)
+    h, w, _ = img.shape
 
-    st.image(image, caption="🖼️ Uploaded Image", use_column_width=True)
+    bits = ""
+    for i in range(h):
+        for j in range(w):
+            for k in range(3):
+                bits += str(img[i][j][k] & 1)
 
-    if mode == "Encode":
-        if st.button("🔐 Encode Message"):
-            if text and key:
-                encoded_array = encode_message(image_array, text, key)
-                stego_image = Image.fromarray(encoded_array)
-                st.image(stego_image, caption="📷 Stego Image")
+    msg_len = int(bits[:16], 2)
+    bits = bits[16:]
 
-                # Allow download
-                buf = io.BytesIO()
-                stego_image.save(buf, format="PNG")
-                byte_im = buf.getvalue()
-                st.download_button("📥 Download Stego Image", byte_im, file_name="stego_image.png")
-            else:
-                st.warning("Please enter both a secret message and a key.")
-    else:
-        length = st.number_input("🔢 Length of hidden message", min_value=1, step=1)
-        if st.button("🕵️ Decode Message"):
-            if key:
-                message = decode_message(image_array, length, key)
-                st.success(f"Decoded Message: {message}")
-            else:
-                st.warning("Please enter the decryption key.")
-            
+    message = ""
+    for i in range(msg_len):
+        byte = bits[i*8:(i+1)*8]
+        val = int(byte, 2)
+        ch = c[val ^ d[key[i % len(key)]]]
+        message += ch
+
+    return message
+st.set_page_config(page_title="LSB Steganography", layout="centered")
+
+st.title("🔐 LSB Steganography using XOR")
+st.caption("Hide and retrieve secret messages inside images")
+
+tab1, tab2 = st.tabs(["🔒 Encode", "🔓 Decode"])
+
+with tab1:
+    img_file = st.file_uploader("Upload PNG Image", type=["png"])
+    text = st.text_area("Enter Secret Message")
+    key = st.text_input("Enter Encryption Key", type="password")
+
+    if st.button("Encode"):
+        if img_file and text and key:
+            img = Image.open(img_file)
+            encoded = encode_image(img, text, key)
+            st.image(encoded, caption="Encoded Image")
+            encoded.save("encoded.png")
+            with open("encoded.png", "rb") as f:
+                st.download_button("Download Image", f, "encoded.png")
+        else:
+            st.error("All fields are required")
+
+with tab2:
+    img_file = st.file_uploader("Upload Encoded Image", type=["png"])
+    key = st.text_input("Enter Decryption Key", type="password")
+
+    if st.button("Decode"):
+        if img_file and key:
+            img = Image.open(img_file)
+            message = decode_image(img, key)
+            st.success("Hidden Message:")
+            st.code(message)
+        else:
+            st.error("Image and key required")
+
+
+           
