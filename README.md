@@ -6,6 +6,8 @@ Project Description:
 
 This project focuses on implementing LSB (Least Significant Bit) steganography for hiding and extracting information in digital images. Using a random image as the carrier, the project employs encryption and decryption techniques to securely embed and retrieve hidden data. The primary goal is to explore how image processing and data security can be combined to ensure confidential communication. 🔐💬
 
+Click here to see project : https://steganography-project-lsb-qlgqjo9w4c9byeafuzkvyo.streamlit.app/
+
 Technologies Used 🛠️
 
 * Python 🐍: The primary programming language used to implement the project.
